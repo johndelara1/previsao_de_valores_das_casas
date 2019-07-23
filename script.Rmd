@@ -1,0 +1,80 @@
+#This is an R program to apply Random Forest regression technique on housing sales prices prediction
+
+```{r}
+setwd("C:/Users/jo053424/Desktop/casas")
+library(readr) # CSV file I/O, e.g. the read_csv function
+library(randomForest)    # For Random Forest
+library(caret)        # createDataPartition()
+```
+
+#Reading train and test data
+
+```{r}
+df_train <- read.csv("train.csv",header=T)
+
+df_test <- read.csv("test.csv",header=T)
+
+dim(df_train)
+dim(df_test)
+
+str(df_train)
+```
+
+#Check for NA and Applying na.roughfix to replace NAs with column medians
+```{r}
+df_train<-na.roughfix(df_train)
+df_test<-na.roughfix(df_test)
+
+sum(is.na(df_train))
+sum(is.na(df_test))
+```
+#Partition training dataset into training and validation
+```{r}
+trainInd<-createDataPartition(df_train$SalePrice,
+                                p=0.8,
+                                list=FALSE)
+
+train_housing<-df_train[trainInd,]
+valid_housing<-df_train[-trainInd,]
+```
+
+#Apply Random Forest technique
+```{r}
+rf_model_housing <-train(SalePrice ~., # Standard formula notation
+                  data=train_housing[,-1],  # Excclude 'id'
+                  method="rf",              # randomForest
+                  nodesize= 10,              # 10 data-points/node. Speeds modeling
+                  ntree =500,               # Default 500. Reduced to speed up modeling
+                  trControl=trainControl(method="repeatedcv", number=2,repeats=1),  # cross-validation strategy
+                  tuneGrid = expand.grid(mtry = c(123))
+  )
+  
+rf_model_housing
+```
+#Make predictions on validation dataset
+```{r}
+pred_results <- predict(rf_model_housing,
+                       valid_housing,
+                       type = "raw")
+
+pred_df <- data.frame(pred_results)
+valid_verify_df <- cbind(valid_housing$SalePrice,pred_df)
+head(valid_verify_df)
+```
+
+#Make predictions on test dataset
+```{r}
+SalePrice <- predict(rf_model_housing,
+                       df_test,
+                       type = "raw")
+
+SalePrice <- data.frame(SalePrice)
+
+test_verify_df <- cbind("Id" = df_test$Id, SalePrice)
+head(test_verify_df)
+```
+
+#Create submission csv
+```{r}
+write.csv(test_verify_df,file="Sahil_Yagnik_submission.csv", quote = FALSE, row.names = FALSE)
+```
